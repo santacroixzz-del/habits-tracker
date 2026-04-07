@@ -54,7 +54,7 @@ export async function generateRecommendation(
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 500,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -129,5 +129,6 @@ ${recentSummary || "Sin historial previo"}
 Genera un resumen breve del dia y una observacion sobre patrones que notes. Sin frases motivacionales vacias. Maximo 4 oraciones. Se directo y concreto.`
   }
 }
+
 
 
