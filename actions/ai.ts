@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
@@ -72,6 +72,8 @@ export async function generateRecommendation(
 
     return { recommendation }
   } catch (error) {
+    console.error("AI ERROR:", error)
+    console.error("AI ERROR:", error)
     return { error: "Error al generar recomendacion." }
   }
 }
@@ -127,3 +129,5 @@ ${recentSummary || "Sin historial previo"}
 Genera un resumen breve del dia y una observacion sobre patrones que notes. Sin frases motivacionales vacias. Maximo 4 oraciones. Se directo y concreto.`
   }
 }
+
+

@@ -30,16 +30,18 @@ export async function upsertCheckin(data: CheckinInsert) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "No autenticado." }
 
-  const { error } = await supabase
+  const { data: result, error } = await supabase
     .from("checkins")
     .upsert(
       { ...data, user_id: user.id },
       { onConflict: "user_id,checkin_date,checkin_type" }
     )
+    .select()
+    .single()
 
   if (error) return { error: "No se pudo guardar el check-in." }
   revalidatePath("/dashboard")
-  return { success: true }
+  return { success: true, id: result?.id }
 }
 
 export async function addMeditationSession(data: MeditationSessionInsert) {
