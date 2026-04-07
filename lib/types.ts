@@ -53,6 +53,9 @@ export type Checkin = {
   energy_level: 1 | 2 | 3 | 4 | 5
   used_substance: boolean | null
   notes: string | null
+  prayed: boolean | null
+  went_to_church: boolean | null
+  prayer_notes: string | null
   created_at: string
 }
 
@@ -64,6 +67,9 @@ export type CheckinInsert = {
   energy_level: number
   used_substance?: boolean
   notes?: string | null
+  prayed?: boolean
+  went_to_church?: boolean
+  prayer_notes?: string | null
 }
 
 export type Gratitude = {
@@ -81,15 +87,6 @@ export type GratitudeInsert = {
   text_1: string
   text_2: string
   text_3: string
-}
-
-export type AiRecommendation = {
-  id: string
-  user_id: string
-  checkin_id: string
-  checkin_type: CheckinType
-  recommendation: string
-  created_at: string
 }
 
 export type DayStatus = "clean" | "used" | "unregistered"

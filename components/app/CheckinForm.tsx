@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
 import { CheckinType, MeditationSession } from "@/lib/types"
 import { upsertCheckin, addMeditationSession, deleteMeditationSession, upsertGratitude } from "@/actions/checkins"
-import { generateRecommendation } from "@/actions/ai"
+import { generateRecommendation } from "@/lib/recommendations"
 
 type Props = {
   type: CheckinType
@@ -18,7 +18,7 @@ type Props = {
 
 type Scale = 1 | 2 | 3 | 4 | 5
 
-export function CheckinForm({ type, date, existingCheckin, existingSessions = [], existingGratitude, recentData }: Props) {
+export function CheckinForm({ type, date, existingCheckin, existingSessions = [], existingGratitude }: Props) {
   const [anxiety, setAnxiety] = useState<Scale>(existingCheckin?.anxiety_level ?? 3)
   const [mood, setMood] = useState<Scale>(existingCheckin?.mood_level ?? 3)
   const [energy, setEnergy] = useState<Scale>(existingCheckin?.energy_level ?? 3)
@@ -30,9 +30,16 @@ export function CheckinForm({ type, date, existingCheckin, existingSessions = []
   const [gratitude1, setGratitude1] = useState(existingGratitude?.text_1 ?? "")
   const [gratitude2, setGratitude2] = useState(existingGratitude?.text_2 ?? "")
   const [gratitude3, setGratitude3] = useState(existingGratitude?.text_3 ?? "")
+  const [prayed, setPrayed] = useState(existingCheckin?.prayed ?? false)
+  const [wentToChurch, setWentToChurch] = useState(existingCheckin?.went_to_church ?? false)
+  const [prayerNotes, setPrayerNotes] = useState(existingCheckin?.prayer_notes ?? "")
   const [loading, setLoading] = useState(false)
-  const [recommendation, setRecommendation] = useState<string | null>(null)
+  const [recommendation, setRecommendation] = useState<string | null>(
+    existingCheckin ? generateRecommendation({ anxiety_level: existingCheckin.anxiety_level, mood_level: existingCheckin.mood_level, energy_level: existingCheckin.energy_level, checkin_type: type, date }) : null
+  )
   const [feedback, setFeedback] = useState<string | null>(null)
+
+  const isSunday = new Date(date).getDay() === 0
 
   async function handleAddSession() {
     if (newDuration < 1) return
@@ -74,6 +81,9 @@ export function CheckinForm({ type, date, existingCheckin, existingSessions = []
       energy_level: energy,
       ...(type === "night" ? { used_substance: usedSubstance } : {}),
       notes: notes.trim() || null,
+      prayed,
+      ...(isSunday ? { went_to_church: wentToChurch } : {}),
+      prayer_notes: prayerNotes.trim() || null,
     }
 
     const checkinResult = await upsertCheckin(checkinData)
@@ -92,17 +102,15 @@ export function CheckinForm({ type, date, existingCheckin, existingSessions = []
       })
     }
 
-    const aiResult = await generateRecommendation(
-      checkinResult.id ?? "",
-      type,
-      checkinData,
-      recentData
-    )
-
-    if (aiResult?.recommendation) {
-      setRecommendation(aiResult.recommendation)
-    }
-
+    const rec = generateRecommendation({
+      anxiety_level: anxiety,
+      mood_level: mood,
+      energy_level: energy,
+      used_substance: usedSubstance,
+      checkin_type: type,
+      date,
+    })
+    setRecommendation(rec)
     setLoading(false)
   }
 
@@ -156,6 +164,46 @@ export function CheckinForm({ type, date, existingCheckin, existingSessions = []
         </div>
       </Card>
 
+      <Card>
+        <p className="text-sm font-medium mb-3">Oracion</p>
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs text-neutral-500 mb-2">Rezaste hoy?</p>
+            <div className="flex gap-2">
+              <button onClick={() => setPrayed(false)}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${!prayed ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900" : "border-neutral-200 text-neutral-500 dark:border-neutral-700"}`}>
+                No
+              </button>
+              <button onClick={() => setPrayed(true)}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${prayed ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900" : "border-neutral-200 text-neutral-500 dark:border-neutral-700"}`}>
+                Si
+              </button>
+            </div>
+          </div>
+          {isSunday && (
+            <div>
+              <p className="text-xs text-neutral-500 mb-2">Fuiste a la iglesia?</p>
+              <div className="flex gap-2">
+                <button onClick={() => setWentToChurch(false)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${!wentToChurch ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900" : "border-neutral-200 text-neutral-500 dark:border-neutral-700"}`}>
+                  No
+                </button>
+                <button onClick={() => setWentToChurch(true)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${wentToChurch ? "bg-neutral-900 text-white border-neutral-900 dark:bg-neutral-100 dark:text-neutral-900" : "border-neutral-200 text-neutral-500 dark:border-neutral-700"}`}>
+                  Si
+                </button>
+              </div>
+            </div>
+          )}
+          <div>
+            <label className="text-xs text-neutral-500">Notas de oracion (opcional)</label>
+            <textarea value={prayerNotes} onChange={e => setPrayerNotes(e.target.value)} rows={2}
+              className="mt-1 w-full border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-sm bg-transparent resize-none"
+            />
+          </div>
+        </div>
+      </Card>
+
       {type === "night" && (
         <>
           <Card>
@@ -201,13 +249,13 @@ export function CheckinForm({ type, date, existingCheckin, existingSessions = []
 
       {recommendation && (
         <Card>
-          <p className="text-xs text-neutral-400 mb-2">Recomendacion</p>
-          <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">{recommendation}</p>
+          <p className="text-xs text-neutral-400 mb-2">Para vos hoy</p>
+          <p className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed whitespace-pre-line">{recommendation}</p>
         </Card>
       )}
 
       <Button type="button" onClick={handleSubmit} disabled={loading} fullWidth>
-        {loading ? "Guardando..." : recommendation ? "Actualizar" : "Guardar y obtener recomendacion"}
+        {loading ? "Guardando..." : "Guardar"}
       </Button>
     </div>
   )
